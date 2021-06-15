@@ -16,28 +16,35 @@ Module Description:
 #include <stdarg.h>
 
 #include "bsp.h"
+#include "events.h"
+#include "globals.h"
 #include "print.h"
+
 #include "mp3Util.h"
+#include "mp3UserInterface.h"
+#include "mp3TouchInterface.h"
 
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_ILI9341.h>
 #include <Adafruit_FT6206.h>
-
-Adafruit_ILI9341 lcdCtrl = Adafruit_ILI9341(); // The LCD controller
-
-Adafruit_FT6206 touchCtrl = Adafruit_FT6206(); // The touch controller
 
 #define PENRADIUS 3
 
-long MapTouchToScreen(long x, long in_min, long in_max, long out_min, long out_max)
-{
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
+//#include "train_crossing.h"
+
+#define BUFSIZE         256
+
+char listOfSongs[MAXLISTOFSONGS][SUPPFILENAMESIZE];    // An array to prefetch a list of songs array
+unsigned int sizeOfList = 0;
+unsigned int currSongFilePntr = 0;
 
 
-#include "train_crossing.h"
+BOOLEAN isPlaying    = OS_FALSE;
+BOOLEAN isStopSong   = OS_FALSE;
+BOOLEAN isFastForward= OS_FALSE;
+BOOLEAN isRewind     = OS_FALSE;
+BOOLEAN isVolUp      = OS_FALSE;
+BOOLEAN isVolDown    = OS_FALSE;
 
-#define BUFSIZE 256
+INT32U currPlayingSongFilePntr = INT_MAX;
 
 /************************************************************************************
 
@@ -46,22 +53,27 @@ long MapTouchToScreen(long x, long in_min, long in_max, long out_min, long out_m
 
 ************************************************************************************/
 
-static OS_STK   LcdTouchDemoTaskStk[APP_CFG_TASK_START_STK_SIZE];
-static OS_STK   Mp3DemoTaskStk[APP_CFG_TASK_START_STK_SIZE];
+static OS_STK   LcdDisplayTaskStk[APP_DISPLAY_TASK_EQ_STK_SIZE];
+static OS_STK   Mp3StreamTaskStk[APP_MP3STREAM_TASK_EQ_STK_SIZE];
+static OS_STK   CmdControllerTaskStk[APP_CMD_TASK_EQ_STK_SIZE];
+static OS_STK   LcdTouchTaskStk[APP_TOUCH_TASK_EQ_STK_SIZE];
 
      
 // Task prototypes
-void LcdTouchDemoTask(void* pdata);
-void Mp3DemoTask(void* pdata);
-
-
-
-// Useful functions
-void PrintToLcdWithBuf(char *buf, int size, char *format, ...);
+void LcdDisplayTask(void* pdata);
+void Mp3StreamTask(void* pdata);
+void CmdControllerTask(void* pdata);
+void LcdTouchTask(void* pdata);
 
 // Globals
-BOOLEAN nextSong = OS_FALSE;
+PlayerWindow pWindow;                   // Player Window Instance
 
+//OS Events
+OS_EVENT *touchEventsMbox;
+OS_EVENT *mp3EventsMbox;
+
+OS_EVENT *displayQMsg;
+void * displayQMsgPtrs[EVENT_QUEUE_SIZE];
 /************************************************************************************
 
    This task is the initial task running, started by main(). It starts
@@ -74,22 +86,23 @@ void StartupTask(void* pdata)
 
     PjdfErrCode pjdfErr;
     INT32U length;
+    INT8U err = 0;
     static HANDLE hSD = 0;
     static HANDLE hSPI = 0;
 
-	PrintWithBuf(buf, BUFSIZE, "StartupTask: Begin\n");
-	PrintWithBuf(buf, BUFSIZE, "StartupTask: Starting timer tick\n");
+	//PrintWithBuf(buf, BUFSIZE, "StartupTask: Begin\n");
+	//PrintWithBuf(buf, BUFSIZE, "StartupTask: Starting timer tick\n");
 
     // Start the system tick
     SetSysTick(OS_TICKS_PER_SEC);
     
     // Initialize SD card
-    PrintWithBuf(buf, PRINTBUFMAX, "Opening handle to SD driver: %s\n", PJDF_DEVICE_ID_SD_ADAFRUIT);
+    //PrintWithBuf(buf, PRINTBUFMAX, "Opening handle to SD driver: %s\n", PJDF_DEVICE_ID_SD_ADAFRUIT);
     hSD = Open(PJDF_DEVICE_ID_SD_ADAFRUIT, 0);
     if (!PJDF_IS_VALID_HANDLE(hSD)) while(1);
 
 
-    PrintWithBuf(buf, PRINTBUFMAX, "Opening SD SPI driver: %s\n", SD_SPI_DEVICE_ID);
+    //PrintWithBuf(buf, PRINTBUFMAX, "Opening SD SPI driver: %s\n", SD_SPI_DEVICE_ID);
     // We talk to the SD controller over a SPI interface therefore
     // open an instance of that SPI driver and pass the handle to 
     // the SD driver.
@@ -99,120 +112,194 @@ void StartupTask(void* pdata)
     length = sizeof(HANDLE);
     pjdfErr = Ioctl(hSD, PJDF_CTRL_SD_SET_SPI_HANDLE, &hSPI, &length);
     if(PJDF_IS_ERROR(pjdfErr)) while(1);
+    
+    if (!SD.begin(hSD)) 
+    {
+        //PrintWithBuf(buf, PRINTBUFMAX, "Attempt to initialize SD card failed.\n");
+    }
 
     // Create the test tasks
     PrintWithBuf(buf, BUFSIZE, "StartupTask: Creating the application tasks\n");
+    
+    // Create Mailbox
+    touchEventsMbox = OSMboxCreate(NULL);
+    mp3EventsMbox   = OSMboxCreate(NULL);
+    
+    //Create Queue
+    displayQMsg = OSQCreate(displayQMsgPtrs, EVENT_QUEUE_SIZE);
+    
+    //Create Event Flag -- not using
+    //mp3Flags = OSFlagCreate( 0x1, &err);
 
     // The maximum number of tasks the application can have is defined by OS_MAX_TASKS in os_cfg.h
-    OSTaskCreate(Mp3DemoTask, (void*)0, &Mp3DemoTaskStk[APP_CFG_TASK_START_STK_SIZE-1], APP_TASK_TEST1_PRIO);
-    OSTaskCreate(LcdTouchDemoTask, (void*)0, &LcdTouchDemoTaskStk[APP_CFG_TASK_START_STK_SIZE-1], APP_TASK_TEST2_PRIO);
+    OSTaskCreate(Mp3StreamTask, (void*)0, &Mp3StreamTaskStk[APP_MP3STREAM_TASK_EQ_STK_SIZE-1], APP_TASK_TEST4_PRIO);
+    OSTaskCreate(LcdDisplayTask, (void*)0, &LcdDisplayTaskStk[APP_DISPLAY_TASK_EQ_STK_SIZE-1], APP_TASK_TEST2_PRIO);
+    OSTaskCreate(LcdTouchTask,   (void*)0, &LcdTouchTaskStk[APP_TOUCH_TASK_EQ_STK_SIZE-1],   APP_TASK_TEST1_PRIO);
+    OSTaskCreate(CmdControllerTask,   (void*)0, &CmdControllerTaskStk[APP_CMD_TASK_EQ_STK_SIZE-1],   APP_TASK_TEST3_PRIO);
 
     // Delete ourselves, letting the work be done in the new tasks.
     PrintWithBuf(buf, BUFSIZE, "StartupTask: deleting self\n");
 	OSTaskDel(OS_PRIO_SELF);
 }
 
-static void DrawLcdContents()
+/************************************************************************************
+
+   Runs LCD Display code
+
+************************************************************************************/
+void LcdDisplayTask(void* pdata)
 {
-    char buf[BUFSIZE];
-    OS_CPU_SR cpu_sr;
+    INT8U err;
+    Event_Type winEvent;
     
-    // allow slow lower pri drawing operation to finish without preemption
-    OS_ENTER_CRITICAL(); 
+    Mp3FetchFileNames();
+        
+    SetUpLCDInterface();
     
-    lcdCtrl.fillScreen(ILI9341_BLACK);
-    
-    // Print a message on the LCD
-    lcdCtrl.setCursor(40, 60);
-    lcdCtrl.setTextColor(ILI9341_WHITE);  
-    lcdCtrl.setTextSize(2);
-    PrintToLcdWithBuf(buf, BUFSIZE, "Hello World!");
-
-    OS_EXIT_CRITICAL();
-
+    InitPlayerWindow(&pWindow);
+        
+    while (1) { 
+        
+        winEvent = *((Event_Type*)OSQPend(displayQMsg, 0, &err));
+        
+        if(err != OS_ERR_NONE) while(1);
+        
+        PlayerWindowStateMachine(&pWindow, winEvent);
+        
+        OSTimeDly(10);
+    }
 }
 
 /************************************************************************************
 
-   Runs LCD/Touch demo code
+   Runs LCD Display code
 
 ************************************************************************************/
-void LcdTouchDemoTask(void* pdata)
-{
-    PjdfErrCode pjdfErr;
-    INT32U length;
-
-    char buf[BUFSIZE];
-    PrintWithBuf(buf, BUFSIZE, "LcdTouchDemoTask: starting\n");
-
-    PrintWithBuf(buf, BUFSIZE, "Opening LCD driver: %s\n", PJDF_DEVICE_ID_LCD_ILI9341);
-    // Open handle to the LCD driver
-    HANDLE hLcd = Open(PJDF_DEVICE_ID_LCD_ILI9341, 0);
-    if (!PJDF_IS_VALID_HANDLE(hLcd)) while(1);
-
-	PrintWithBuf(buf, BUFSIZE, "Opening LCD SPI driver: %s\n", LCD_SPI_DEVICE_ID);
-    // We talk to the LCD controller over a SPI interface therefore
-    // open an instance of that SPI driver and pass the handle to 
-    // the LCD driver.
-    HANDLE hSPI = Open(LCD_SPI_DEVICE_ID, 0);
-    if (!PJDF_IS_VALID_HANDLE(hSPI)) while(1);
-
-    length = sizeof(HANDLE);
-    pjdfErr = Ioctl(hLcd, PJDF_CTRL_LCD_SET_SPI_HANDLE, &hSPI, &length);
-    if(PJDF_IS_ERROR(pjdfErr)) while(1);
-
-    PrintWithBuf(buf, BUFSIZE, "Initializing LCD controller\n");
-    lcdCtrl.setPjdfHandle(hLcd);
-    lcdCtrl.begin();
-
-    DrawLcdContents();
+void LcdTouchTask(void* pdata)
+{     
+    SetUpTouchInterface();
     
-    PrintWithBuf(buf, BUFSIZE, "Initializing FT6206 touchscreen controller\n");
-    
-    // DRIVER TODO
-    // Open a HANDLE for accessing device PJDF_DEVICE_ID_I2C1
-    HANDLE hI2c = Open(PJDF_DEVICE_ID_I2C1, 0);
-    if (!PJDF_IS_VALID_HANDLE(hI2c)) while(1);
-    
-    // Call Ioctl on that handle to set the I2C device address to FT6206_ADDR
-    INT8U addressFT6206 = (FT6206_ADDR << 1);
-    pjdfErr = Ioctl(hI2c, PJDF_CTRL_I2C_SET_DEVICE_ADDRESS, &addressFT6206, NULL);
-    if(PJDF_IS_ERROR(pjdfErr)) while(1);
-    
-    // Call setPjdfHandle() on the touch contoller to pass in the I2C handle
-    touchCtrl.setPjdfHandle(hI2c);
-
-    if (! touchCtrl.begin(40)) {  // pass in 'sensitivity' coefficient
-        PrintWithBuf(buf, BUFSIZE, "Couldn't start FT6206 touchscreen controller\n");
-        while (1);
+    while (1) {         
+              
+        TouchEventGenerator(pWindow);
+        
+        OSTimeDly(10);
     }
-    
-    int currentcolor = ILI9341_RED;
+}
 
-    while (1) { 
-        boolean touched;
-        
-        touched = touchCtrl.touched();
-        
-        if (! touched) {
-            OSTimeDly(5);
-            continue;
-        }
-        
-        TS_Point point;
-        
-        point = touchCtrl.getPoint();
-        if (point.x == 0 && point.y == 0)
+/************************************************************************************
+
+   Runs LCD Display code
+
+************************************************************************************/
+void CmdControllerTask(void* pdata)
+{     
+    Event_Type receivedEvent = EVENT_NONE;
+    INT8U err = 0;
+    
+    while (1) {
+
+        receivedEvent = *((Event_Type*)OSMboxPend(touchEventsMbox, 0, &err));
+        if(err != OS_ERR_NONE) while(1);
+
+     
+        // Send their respective operating events to MP3 Decoder Task and Display Tasks
+        switch (receivedEvent)
         {
-            continue; // usually spurious, so ignore
-        }
+        case EVENT_PLAY_PRESS:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_PLAY_RELEASE:
+            
+            //if(!isPaused){
+            if(currPlayingSongFilePntr != currSongFilePntr)
+            {
+                // exit from song loop
+                isStopSong = OS_TRUE;
+                OSMboxPost(mp3EventsMbox, (void*)&receivedEvent);
+                
+            }
+            OSTimeDly(50);
+
+            isPlaying = OS_TRUE;
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            
+            break;
+        case EVENT_PAUSE_PRESS:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_PAUSE_RELEASE:
+            isPlaying = OS_FALSE;
+            
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_STOP_PRESS:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_STOP_RELEASE:
+            if(isPlaying || (currPlayingSongFilePntr == currSongFilePntr))
+            {
+                isStopSong = OS_TRUE;
+            }
+            else
+            {
+                err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            }
+            break;
+        case EVENT_REWIND_PRESS:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_REWIND_RELEASE:
+            isRewind = OS_TRUE;            
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_FF_PRESS:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_FF_RELEASE:
+            isFastForward = OS_TRUE;
+            
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_UP_PRESS:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_UP_RELEASE:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_DOWN_PRESS:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_DOWN_RELEASE:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_VOLPLUS_PRESS:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_VOLPLUS_RELEASE:
+            if(isPlaying)
+                isVolUp  = OS_TRUE;
+            else
+                OSMboxPost(mp3EventsMbox, (void*)&receivedEvent);
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_VOLMINUS_PRESS:
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_VOLMINUS_RELEASE:
+            if(isPlaying)
+                isVolDown  = OS_TRUE;
+            else
+                OSMboxPost(mp3EventsMbox, (void*)&receivedEvent);
+            err = OSQPost(displayQMsg, (void*)&receivedEvent);
+            break;
+        case EVENT_NONE:
+            break;
+        default:
+            break;
+        }       
         
-        // transform touch orientation to screen orientation.
-        TS_Point p = TS_Point();
-        p.x = MapTouchToScreen(point.x, 0, ILI9341_TFTWIDTH, ILI9341_TFTWIDTH, 0);
-        p.y = MapTouchToScreen(point.y, 0, ILI9341_TFTHEIGHT, ILI9341_TFTHEIGHT, 0);
-        
-        lcdCtrl.fillCircle(p.x, p.y, PENRADIUS, currentcolor);
+        OSTimeDly(5);
     }
 }
 /************************************************************************************
@@ -220,9 +307,11 @@ void LcdTouchDemoTask(void* pdata)
    Runs MP3 demo code
 
 ************************************************************************************/
-void Mp3DemoTask(void* pdata)
+void Mp3StreamTask(void* pdata)
 {
+    Event_Type  mp3Event;
     PjdfErrCode pjdfErr;
+    INT8U err;
     INT32U length;
     
     char buf[BUFSIZE];
@@ -246,39 +335,35 @@ void Mp3DemoTask(void* pdata)
 
     // Send initialization data to the MP3 decoder and run a test
 	PrintWithBuf(buf, BUFSIZE, "Starting MP3 device test\n");
-    Mp3Init(hMp3);
-    int count = 0;
+    
+//    OS_ENTER_CRITICAL();
+//    Mp3FetchFileNames();
+//    OS_EXIT_CRITICAL();
     
     while (1)
     {
-        OSTimeDly(500);
-        PrintWithBuf(buf, BUFSIZE, "Begin streaming sound file  count=%d\n", ++count);
-        Mp3Stream(hMp3, (INT8U*)Train_Crossing, sizeof(Train_Crossing)); 
-        PrintWithBuf(buf, BUFSIZE, "Done streaming sound file  count=%d\n", count);
+        //OSTimeDly(50);
+        mp3Event = *((Event_Type*)OSMboxPend(mp3EventsMbox, 0, &err));
+        if(err != OS_ERR_NONE) while(1);
+        
+        // Process their respective operating events to MP3 Decoder Task and Display Tasks
+        switch (mp3Event)
+        {
+        case EVENT_PLAY_RELEASE:
+             Mp3StreamCycle(hMp3);
+            break;
+        
+        case EVENT_VOLPLUS_RELEASE:
+            Mp3VolumeControl(hMp3, VOLUP);
+            break;
+        
+        case EVENT_VOLMINUS_RELEASE:
+            Mp3VolumeControl(hMp3, VOLDOWN);
+            break;
+            
+        default:
+            break;
+        }
+         
     }
 }
-
-
-// Renders a character at the current cursor position on the LCD
-static void PrintCharToLcd(char c)
-{
-    lcdCtrl.write(c);
-}
-
-/************************************************************************************
-
-   Print a formated string with the given buffer to LCD.
-   Each task should use its own buffer to prevent data corruption.
-
-************************************************************************************/
-void PrintToLcdWithBuf(char *buf, int size, char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    PrintToDeviceWithBuf(PrintCharToLcd, buf, size, format, args);
-    va_end(args);
-}
-
-
-
-

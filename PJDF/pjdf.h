@@ -22,7 +22,6 @@ typedef INT8S HANDLE;
 #define PJDF_IS_VALID_HANDLE(x)  (x > 0) // A valid device driver handle is a positive number
 
 
-// DRIVER TODO LIST FOR ADDING A NEW DRIVER: 
 //    - define a new PJDF_DEVICE_ID_<MYDEVICE> below
 //    - reference it under PJDF_DEVICE_IDS below
 //    - add a new pjdfInternal<mydevice>.c module to implement the pjdfInternal.h interface

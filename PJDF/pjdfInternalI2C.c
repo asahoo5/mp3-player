@@ -48,9 +48,7 @@ static PjdfErrCode CloseI2C(DriverInternal *pDriver)
 // pCount: the number of bytes to read.
 // Returns: PJDF_ERR_NONE if there was no error, otherwise an error code.
 static PjdfErrCode ReadI2C(DriverInternal *pDriver, void* pBuffer, INT32U* pCount)
-{
-  // DRIVER TODO
-    
+{    
   // Note: Address of register is sent in similar way to a write and then read action can be performed 
   //       i.e Start Cond.(Start bit + Address + Write bit) --> Ack --> Register Address --> Ack --> Restart Cond.(Read) --> Ack --> Data1 --> Ack .... DataN --> NAck(Autoend met) --> Stop Condition
   
@@ -133,8 +131,6 @@ static PjdfErrCode ReadI2C(DriverInternal *pDriver, void* pBuffer, INT32U* pCoun
 // Returns: PJDF_ERR_NONE if there was no error, otherwise an error code.
 static PjdfErrCode WriteI2C(DriverInternal *pDriver, void* pBuffer, INT32U* pCount)
 {
-  // DRIVER TODO
-
   // Note: Address of register is sent in similar way as someone would send data 
   //       i.e Start Cond.(Start bit + Address + Write bit) --> Ack --> Register Address --> Ack --> Data1 --> Ack .... DataN --> Ack(Autoend met) --> Stop Condition
     
@@ -227,7 +223,6 @@ PjdfErrCode InitI2C(DriverInternal *pDriver, char *pName)
     // We may choose to handle multiple hardware instances of the I2C interface
     // each of which gets its own DriverInternal struct. Here we initialize 
     // the context of the I2C hardware instance specified by pName.
-    // DRIVER TODO
     // Uncomment the following if block:
     if (strcmp(pName, PJDF_DEVICE_ID_I2C1) == 0)
     {

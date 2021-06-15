@@ -59,6 +59,7 @@
 #define APP_TASK_TEST1_PRIO                 5
 #define APP_TASK_TEST2_PRIO                 6
 #define APP_TASK_TEST3_PRIO                 7
+#define APP_TASK_TEST4_PRIO                 8
 #define  OS_TASK_TMR_PRIO                (OS_LOWEST_PRIO - 2u)
 
 
@@ -71,6 +72,10 @@
 
 #define  APP_CFG_TASK_START_STK_SIZE            256u
 #define  APP_CFG_TASK_EQ_STK_SIZE               512u
+#define  APP_MP3STREAM_TASK_EQ_STK_SIZE         4096u
+#define  APP_DISPLAY_TASK_EQ_STK_SIZE           2048u
+#define  APP_TOUCH_TASK_EQ_STK_SIZE             2048u
+#define  APP_CMD_TASK_EQ_STK_SIZE               2048u
 #define  APP_CFG_TASK_OBJ_STK_SIZE              256u
 
 

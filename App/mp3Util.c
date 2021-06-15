@@ -5,20 +5,39 @@
     Developed for University of Washington embedded systems programming certificate
     
     2016/2 Nick Strathy wrote/arranged it
+
+    2021/2 Abhilash Sahoo updated to support MP3 Streaming task for the project
 */
 
-#include "bsp.h"
-#include "print.h"
-#include "SD.h"
+#include "mp3Util.h"
+
+#define DEFAULT_VOLUME_INDEX 8
 
 void delay(uint32_t time);
 
 
 static File dataFile;
+static INT8U  mp3Buf[MP3_DECODER_BUF_SIZE];
+static INT32U iBufPos = 0;
+static INT32U iDataFileMovPos = 0;
+static INT32U iDataFileCurPos = 0;
+static INT32U iDataFileBegPos = 0;
+static INT32U progressCounter = 0;
+static INT8U  volProgressCounter = DEFAULT_VOLUME_INDEX;
+static Event_Type mp3Event;
 
-extern BOOLEAN nextSong;
 
-static void Mp3StreamInit(HANDLE hMp3)
+extern BOOLEAN isFileStart;
+extern BOOLEAN isPlaying;
+extern BOOLEAN isStopSong;
+extern BOOLEAN isFastForward;
+extern BOOLEAN isRewind;
+extern BOOLEAN isVolUp;
+extern BOOLEAN isVolDown;
+
+extern INT32U currPlayingSongFilePntr;
+
+void Mp3StreamInit(HANDLE hMp3)
 {
     INT32U length;
     
@@ -28,10 +47,13 @@ static void Mp3StreamInit(HANDLE hMp3)
     // Reset the device
     length = BspMp3SoftResetLen;
     Write(hMp3, (void*)BspMp3SoftReset, &length);
+    
+    length = BspMp3SetClockFLen;
+    Write(hMp3, (void*)BspMp3SetClockF, &length);
  
     // Set volume
-    length = BspMp3SetVol1010Len;
-    Write(hMp3, (void*)BspMp3SetVol1010, &length);
+    length = BspMp3SetVolLen;
+    Write(hMp3, (void*)BspMp3SetVolRange[volProgressCounter], &length);
 
     // To allow streaming data, set the decoder mode to Play Mode
     length = BspMp3PlayModeLen;
@@ -41,110 +63,40 @@ static void Mp3StreamInit(HANDLE hMp3)
     Ioctl(hMp3, PJDF_CTRL_MP3_SELECT_DATA, 0, 0);
 }
 
-// Mp3StreamSDFile
-// Streams the given file from the SD card to the given MP3 decoder.
-// hMP3: an open handle to the MP3 decoder
-// pFilename: The file on the SD card to stream. 
-void Mp3StreamSDFile(HANDLE hMp3, char *pFilename)
+// Volume Controller for the application
+void Mp3VolumeControl(HANDLE hMp3, VolumeCounter state)
 {
     INT32U length;
-
-    Mp3StreamInit(hMp3);
     
-	char printBuf[PRINTBUFMAX];
-    
-    dataFile = SD.open(pFilename, O_READ);
-    if (!dataFile) 
+    if(state == VOLUP)
     {
-        PrintWithBuf(printBuf, PRINTBUFMAX, "Error: could not open SD card file '%s'\n", pFilename);
-        return;
-    }
-
-    INT8U mp3Buf[MP3_DECODER_BUF_SIZE];
-    INT32U iBufPos = 0;
-    nextSong = OS_FALSE;
-    while (dataFile.available())
-    {
-        iBufPos = 0;
-        while (dataFile.available() && iBufPos < MP3_DECODER_BUF_SIZE)
-        {
-            mp3Buf[iBufPos] = dataFile.read();
-            //delay(30);
-            iBufPos++;
-        }
-       
-        Write(hMp3, mp3Buf, &iBufPos);
-        //OSTimeDly(1);
-        if (nextSong)
-        {
-            break;
-        }
-    }
-    
-    dataFile.close();
-    
-    Ioctl(hMp3, PJDF_CTRL_MP3_SELECT_COMMAND, 0, 0);
-    length = BspMp3SoftResetLen;
-    Write(hMp3, (void*)BspMp3SoftReset, &length);
-}
-
-// Mp3Stream
-// Streams the given buffer of MP3 data to the given MP3 decoder
-// hMp3: an open handle to the MP3 decoder
-// pBuf: MP3 data to stream to the decoder
-// bufLen: number of bytes of MP3 data to stream
-void Mp3Stream(HANDLE hMp3, INT8U *pBuf, INT32U bufLen)
-{
-    INT8U *bufPos = pBuf;
-    INT32U iBufPos = 0;
-    INT32U length;
-    INT32U chunkLen;
-    BOOLEAN done = OS_FALSE;
+        // Volume Range Index Sanity Check
+        if(volProgressCounter == MP3_VOLUME_RANGE-1) return;
         
-    Mp3StreamInit(hMp3);
-    
-    chunkLen = MP3_DECODER_BUF_SIZE;
-
-    while (!done)
+        ++volProgressCounter;
+    }
+    else
     {
-        // detect last chunk of pBuf
-        if (bufLen - iBufPos < MP3_DECODER_BUF_SIZE)
-        {
-            chunkLen = bufLen - iBufPos;
-            done = OS_TRUE;
-        }
-                
-        Write(hMp3, bufPos, &chunkLen);
-                
-        bufPos += chunkLen;
-        iBufPos += chunkLen;
+        // Volume Range Index Sanity Check
+        if(volProgressCounter == 0) return;
+        
+        --volProgressCounter;
     }
     
-    Ioctl(hMp3, PJDF_CTRL_MP3_SELECT_COMMAND, 0, 0);
-    length = BspMp3SoftResetLen;
-    Write(hMp3, (void*)BspMp3SoftReset, &length);
-}
-
-
-// Mp3Init
-// Send commands to the MP3 device to initialize it.
-void Mp3Init(HANDLE hMp3)
-{
-    INT32U length;
-    
-    if (!PJDF_IS_VALID_HANDLE(hMp3)) while (1);
-    
-    // Place MP3 driver in command mode (subsequent writes will be sent to the decoder's command interface)
+    // Place MP3 driver in command mode
     Ioctl(hMp3, PJDF_CTRL_MP3_SELECT_COMMAND, 0, 0);
     
-    length = BspMp3SetClockFLen;
-    Write(hMp3, (void*)BspMp3SetClockF, &length);
+    // Set volume
+    length = BspMp3SetVolLen;
+    Write(hMp3, (void*)BspMp3SetVolRange[volProgressCounter], &length);
 
-    length = BspMp3SetVol1010Len;
-    Write(hMp3, (void*)BspMp3SetVol1010, &length);
-
-    length = BspMp3SoftResetLen;
-    Write(hMp3, (void*)BspMp3SoftReset, &length);
+    // To allow streaming data, set the decoder mode to Play Mode
+    length = BspMp3PlayModeLen;
+    Write(hMp3, (void*)BspMp3PlayMode, &length);
+   
+    // Set MP3 driver to data mode
+    Ioctl(hMp3, PJDF_CTRL_MP3_SELECT_DATA, 0, 0);
+        
 }
 
 // Mp3GetRegister
@@ -168,66 +120,182 @@ PjdfErrCode Mp3GetRegister(HANDLE hMp3, INT8U *cmdInDataOut, INT32U bufLen)
     return retval;
 }
 
-
-// Mp3Test
-// Runs sine wave sound test on the MP3 decoder.
-// For VS1053, the sine wave test only works if run immediately after a hard 
-// reset of the chip.
-void Mp3Test(HANDLE hMp3)
+// Mp3FetchFileNames
+// Fetches a list of file names from the SD card 
+// Note:  This function needs to be called at the beginning of the MP3Task()
+// list - A string array where a list of songs will be stored
+// size - tracks size of array as it grows
+// maxSize - maximum allowable list
+//void Mp3FetchFileNames(char **list, int maxRow, int col, int *sizeOfList)
+void Mp3FetchFileNames()
 {
-    INT32U length;
     
-    if (!PJDF_IS_VALID_HANDLE(hMp3)) while (1);
-    
-    // Place MP3 driver in command mode (subsequent writes will be sent to the decoder's command interface)
-    Ioctl(hMp3, PJDF_CTRL_MP3_SELECT_COMMAND, 0, 0);
-    
-    // Make sure we can communicate with the device by sending a command to read a register value
- 
-    // First set volume to a known value
-    length = BspMp3SetVol1010Len;
-    Write(hMp3, (void*)BspMp3SetVol1010, &length);
-    
-    // Now get the volume setting on the device
-    INT8U buf[10];
-    memcpy(buf, BspMp3ReadVol, BspMp3ReadVolLen); // copy command from flash to a ram buffer
-    Mp3GetRegister(hMp3, buf, BspMp3ReadVolLen);
-    if (buf[2] != 0x10 || buf[3] != 0x10)
+    // Endless loop to read files from the root directory and stream them
+    File dir = SD.open("/");
+    char buf[13];
+    while (sizeOfList <= MAXLISTOFSONGS)
     {
-        while(1); // failed to get data back from the device
-    }
-        
-    for (int i = 0; i < 10; i++)
-    {
-        // set louder volume if i is odd
-        if (i & 1)
+        File entry = dir.openNextFile();
+        if (!entry)
         {
-            length = BspMp3SetVol1010Len;
-            Write(hMp3, (void*)BspMp3SetVol1010, &length);
+            break;
         }
-        else
+        if (entry.isDirectory()) // skip directories
         {
-            length = BspMp3SetVol6060Len;
-            Write(hMp3, (void*)BspMp3SetVol6060, &length);
+            entry.close();
+            continue;
         }
-            
-        // Put MP3 decoder in test mode
-        length = BspMp3TestModeLen;
-        Write(hMp3, (void*)BspMp3TestMode, &length);
-
-        // Play a sine wave
-        length = BspMp3SineWaveLen;
-        Write(hMp3, (void*)BspMp3SineWave, &length);
-        Write(hMp3, (void*)BspMp3SineWave, &length); // Sending once sometimes doesn't work!
-            
-        OSTimeDly(500);
         
-        // Stop playing the sine wave
-        length = BspMp3DeactLen;
-        Write(hMp3, (void*)BspMp3Deact, &length);
+        char *filename = entry.name();
+        for(int i = 0; i < SUPPFILENAMESIZE; ++i)
+            listOfSongs[sizeOfList][i] = filename[i];
+        PrintWithBuf(buf, 13, listOfSongs[sizeOfList]);
         
-        OSTimeDly(500);
+        sizeOfList++;
+        entry.close();
     }
+    dir.seek(0); // reset directory file to read again;
 }
 
+// Mp3StreamSDFile
+// Streams the given file from the SD card to the given MP3 decoder.
+// hMP3: an open handle to the MP3 decoder
+// pFilename: The file on the SD card to stream. 
 
+void Mp3StreamCycle(HANDLE hMp3)
+{
+    
+    INT32U length;
+    INT8U err = 0;
+    
+    Mp3StreamInit(hMp3);
+    
+	//char printBuf[PRINTBUFMAX];
+    
+    dataFile = SD.open(listOfSongs[currSongFilePntr], O_READ);
+    if (!dataFile) 
+    {
+        //PrintWithBuf(printBuf, PRINTBUFMAX, "Error: could not open SD card file '%s'\n", listOfSongs[currSongFilePntr]);
+        return;
+    }
+
+    // Initialize flags
+    
+    isStopSong = OS_FALSE;
+    isFastForward = OS_FALSE;
+    isRewind = OS_FALSE;
+    isVolUp  = OS_FALSE; 
+    isVolDown  = OS_FALSE; 
+    
+    progressCounter = 1;
+    currPlayingSongFilePntr = currSongFilePntr;
+    
+    
+    // this value will be used for increment/decrement song position .
+    // A song data will be seen as ten parts and it will move accordingly
+    iDataFileMovPos = dataFile.size()/10;
+    iDataFileBegPos = dataFile.position();
+    iDataFileCurPos = iDataFileBegPos;
+        
+    while (dataFile.available())
+    {
+        
+        iBufPos = 0;
+        //iDataFileCurPos =  dataFile.position();
+        
+        // if Paused stays in the loop and then picks when played again
+        if(isPlaying)
+        {
+            while (dataFile.available() && iBufPos < MP3_DECODER_BUF_SIZE)
+            {
+                mp3Buf[iBufPos] = dataFile.read();
+                
+                if((dataFile.position() - iDataFileBegPos) == (progressCounter * iDataFileMovPos))
+                {
+                    mp3Event = EVENT_STATUSBAR_INC;
+                    err = OSQPost(displayQMsg, (void*)&mp3Event);
+                    
+                    progressCounter++;
+                }
+                
+                //delay(30);
+                iBufPos++;
+            }
+           
+            Write(hMp3, mp3Buf, &iBufPos);
+            //OSTimeDly(5);
+            
+        }
+
+        // new data file position
+        iDataFileCurPos =  dataFile.position();
+        
+        // Fast Forward, Rewind, Vol+, Vol- and Stop functions should work if it
+        // is Playing or Paused
+        
+        if(isFastForward)
+        {
+            //set new position
+            iDataFileCurPos += iDataFileMovPos;
+            //set the value in file datastructure
+            dataFile.seek(iDataFileCurPos);
+            //Send a Status Bar Update Event to display task
+            mp3Event = EVENT_STATUSBAR_INC;
+            err = OSQPost(displayQMsg, (void*)&mp3Event);
+            
+             progressCounter++;
+                
+            isFastForward = OS_FALSE;
+            //OSFlagPost(mp3Flags, setFastForwardFlag, OS_FLAG_SET, &err);
+        }
+            
+        if(isRewind)
+        {
+            iDataFileCurPos = (iDataFileMovPos >= iDataFileCurPos) ? iDataFileBegPos : 
+                                            (iDataFileCurPos - iDataFileMovPos);
+            //set the value in file datastructure
+            dataFile.seek(iDataFileCurPos);
+            
+            //Send a Status Bar Update Event to display task
+            mp3Event = EVENT_STATUSBAR_DEC;
+            err = OSQPost(displayQMsg, (void*)&mp3Event);
+            
+             progressCounter--;
+                
+            
+            isRewind = OS_FALSE;
+        }
+        
+        if(isVolUp)
+        {
+            Mp3VolumeControl(hMp3, VOLUP);
+            isVolUp = OS_FALSE;
+        }
+        
+        if(isVolDown)
+        {
+            Mp3VolumeControl(hMp3, VOLDOWN);
+            isVolDown = OS_FALSE;
+        }
+        
+        if(isStopSong)
+        {
+            isStopSong = OS_FALSE;
+            break;
+        }
+        
+    }
+    currPlayingSongFilePntr = INT_MAX;
+    isPlaying = OS_FALSE;
+    
+    dataFile.close();
+    
+    mp3Event = EVENT_STOP_RELEASE;
+    err = OSQPost(displayQMsg, (void*)&mp3Event);
+    
+    //OSFlagPost(mp3Flags, setPlayFlag | setPauseFlag, OS_FLAG_WAIT_SET_ALL, &err);
+    
+    Ioctl(hMp3, PJDF_CTRL_MP3_SELECT_COMMAND, 0, 0);
+    length = BspMp3SoftResetLen;
+    Write(hMp3, (void*)BspMp3SoftReset, &length);
+}

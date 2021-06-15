@@ -100,7 +100,10 @@ class Adafruit_GFX_Button {
 		      uint8_t w, uint8_t h, 
 		      uint16_t outline, uint16_t fill, uint16_t textcolor,
 		      char *label, uint8_t textsize);
-  void drawButton(boolean inverted = false);
+  void drawButton(boolean inverted = false, boolean menu = false);
+  void refillButton (uint16_t fill);
+  void reoutlineButton (uint16_t outlinecolor);
+  void relabelButton(char *label);
   boolean contains(int16_t x, int16_t y);
 
   void press(boolean p);
@@ -114,7 +117,7 @@ class Adafruit_GFX_Button {
   uint16_t _w, _h;
   uint8_t _textsize;
   uint16_t _outlinecolor, _fillcolor, _textcolor;
-  char _label[10];
+  char _label[32];
 
   boolean currstate, laststate;
 };

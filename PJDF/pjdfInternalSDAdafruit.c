@@ -96,7 +96,7 @@ static PjdfErrCode WriteSDAdafruit(DriverInternal *pDriver, void* pBuffer, INT32
     HANDLE hSPI = pContext->spiHandle;
     
     if (!pContext->spiLocked) while(1);
-    if (!pContext->csAsserted) while(1); // TODO: does initialization require no assert?
+    //if (!pContext->csAsserted) while(1); // TODO: does initialization require no assert?
     
     // adjust SPI transmission rate
     retval = Ioctl(hSPI, PJDF_CTRL_SPI_SET_DATARATE, (void*)&SDSpiDataRate, (INT32U*)&SizeofSDSpiDataRate); 

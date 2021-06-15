@@ -591,7 +591,7 @@ File File::openNextFile(uint8_t mode) {
 
     // print file name with possible blank fill
     SdFile f;
-    char name[13];
+    char name[32];
     _file->dirName(p, name);
     //Serial.print("try to open file ");
     //Serial.println(name);

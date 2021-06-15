@@ -17,9 +17,27 @@ const INT8U BspMp3TestMode[] =  { 0x02, 0x00, 0x08, 0x20 };
 const INT8U BspMp3PlayMode[] =  { 0x02, 0x00, 0x08, 0x00 };
 const INT8U BspMp3SoftReset[] = { 0x02, 0x00, 0x08, 0x04 };
 const INT8U BspMp3SetClockF[] = { 0x02, 0x03, 0x98, 0x00 };
-const INT8U BspMp3SetVol1010[] = { 0x02, 0x0B, 0x10, 0x10 };
-const INT8U BspMp3SetVol6060[] = { 0x02, 0x0B, 0x60, 0x60 };
+//const INT8U BspMp3SetVol1010[] = { 0x02, 0x0B, 0x10, 0x10 };
+//const INT8U BspMp3SetVol6060[] = { 0x02, 0x0B, 0x60, 0x60 };
 const INT8U BspMp3ReadVol[] = { 0x3, 0x0B, 0x00, 0x00 };
+
+//Definition of a Volume Range (Min to Max) going down by 1/10th
+const INT8U BspMp3SetVolRange[MP3_VOLUME_RANGE][DATA_FRAME] = {
+                                                { 0x02, 0x0B, 0x80, 0x80 },
+                                                { 0x02, 0x0B, 0x70, 0x70 },
+                                                { 0x02, 0x0B, 0x60, 0x60 },
+                                                { 0x02, 0x0B, 0x58, 0x58 },
+                                                { 0x02, 0x0B, 0x50, 0x50 },
+                                                { 0x02, 0x0B, 0x48, 0x48 },
+                                                { 0x02, 0x0B, 0x40, 0x40 },
+                                                { 0x02, 0x0B, 0x38, 0x38 },
+                                                { 0x02, 0x0B, 0x30, 0x30 },
+                                                { 0x02, 0x0B, 0x28, 0x28 },
+                                                { 0x02, 0x0B, 0x20, 0x20 },
+                                                { 0x02, 0x0B, 0x18, 0x18 },
+                                                { 0x02, 0x0B, 0x10, 0x10 },
+                                                { 0x02, 0x0B, 0x0A, 0x0A }
+                                                };
 
 // Lengths of the above commands
 const INT8U BspMp3SineWaveLen = sizeof(BspMp3SineWave);
@@ -28,8 +46,8 @@ const INT8U BspMp3TestModeLen = sizeof(BspMp3TestMode);
 const INT8U BspMp3PlayModeLen = sizeof(BspMp3PlayMode);
 const INT8U BspMp3SoftResetLen = sizeof(BspMp3SoftReset);
 const INT8U BspMp3SetClockFLen = sizeof(BspMp3SetClockF);
-const INT8U BspMp3SetVol1010Len = sizeof(BspMp3SetVol1010);
-const INT8U BspMp3SetVol6060Len = sizeof(BspMp3SetVol6060);
+//const INT8U BspMp3SetVol1010Len = sizeof(BspMp3SetVol1010);
+const INT8U BspMp3SetVolLen = sizeof(BspMp3SetVolRange[0]);
 const INT8U BspMp3ReadVolLen = sizeof(BspMp3ReadVol);
 
 
