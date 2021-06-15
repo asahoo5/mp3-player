@@ -2438,20 +2438,38 @@
                 <name>$PROJ_DIR$\App\uCOS\app_hooks.c</name>
             </file>
             <file>
+                <name>$PROJ_DIR$\App\globals.h</name>
+            </file>
+            <file>
                 <name>$PROJ_DIR$\App\uCOS\os_cfg.h</name>
             </file>
         </group>
         <file>
+            <name>$PROJ_DIR$\App\events.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\App\main.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\App\mp3TouchInterface.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\App\mp3TouchInterface.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\App\mp3UiSettings.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\App\mp3UserInterface.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\App\mp3UserInterface.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\App\mp3Util.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\App\mp3Util.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\App\shell.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\App\tasks.c</name>
@@ -2741,18 +2759,6 @@
                 </group>
             </group>
         </group>
-    </group>
-    <group>
-        <name>MP3data</name>
-        <file>
-            <name>$PROJ_DIR$\MP3data\GenerateMp3Header.ps1</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\MP3data\train_crossing.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\MP3data\train_crossing.mp3</name>
-        </file>
     </group>
     <group>
         <name>PJDF</name>

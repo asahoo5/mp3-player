@@ -35,7 +35,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "glcdfont.c"
 
 void PrintToLcdWithBuf(char *buf, int size, char *format, ...);
-#define BUTTONBUFSIZE 16
+#define BUTTONBUFSIZE 32
 char buttonBuf[BUTTONBUFSIZE];
 
 #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
@@ -572,13 +572,13 @@ void Adafruit_GFX_Button::initButton(Adafruit_GFX *gfx,
   _textcolor = textcolor;
   _textsize = textsize;
   _gfx = gfx;
-  strncpy(_label, label, 9);
-  _label[9] = 0;
+  strncpy(_label, label, BUTTONBUFSIZE);
+  _label[BUTTONBUFSIZE-1] = 0;
 }
 
  
 
- void Adafruit_GFX_Button::drawButton(boolean inverted) {
+ void Adafruit_GFX_Button::drawButton(boolean inverted, boolean menu) {
    uint16_t fill, outline, text;
 
    if (! inverted) {
@@ -594,14 +594,29 @@ void Adafruit_GFX_Button::initButton(Adafruit_GFX *gfx,
    _gfx->fillRoundRect(_x - (_w/2), _y - (_h/2), _w, _h, min(_w,_h)/4, fill);
    _gfx->drawRoundRect(_x - (_w/2), _y - (_h/2), _w, _h, min(_w,_h)/4, outline);
    
-   
-   _gfx->setCursor(_x - strlen(_label)*3*_textsize, _y-4*_textsize);
+   if(menu)
+       _gfx->setCursor(_x - 115, _y - 3);
+   else
+       _gfx->setCursor(_x - strlen(_label)*3*_textsize, _y-4*_textsize);
    _gfx->setTextColor(text);
    _gfx->setTextSize(_textsize);
    //_gfx->print(_label);
    PrintToLcdWithBuf(buttonBuf, BUTTONBUFSIZE, _label);
    //while(1); // Need to implement print
  }
+
+void Adafruit_GFX_Button::refillButton(uint16_t fill) {
+    _fillcolor = fill;
+    //_gfx->fillRoundRect(_x - (_w/2), _y - (_h/2), _w, _h, min(_w,_h)/4, _fillcolor);
+}
+
+void Adafruit_GFX_Button::relabelButton(char *label) {
+    strncpy(_label, label, BUTTONBUFSIZE);
+}
+
+void Adafruit_GFX_Button:: reoutlineButton (uint16_t outlinecolor){
+    _outlinecolor = outlinecolor;
+}
 
 boolean Adafruit_GFX_Button::contains(int16_t x, int16_t y) {
    if ((x < (_x - _w/2)) || (x > (_x + _w/2))) return false;

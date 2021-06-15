@@ -27,7 +27,7 @@
 
 
                                        /* ---------------------- MISCELLANEOUS ----------------------- */
-#define OS_APP_HOOKS_EN           1u   /* Application-defined hooks are called from the uC/OS-II hooks */
+#define OS_APP_HOOKS_EN           0u   /* Application-defined hooks are called from the uC/OS-II hooks */
 #define OS_ARG_CHK_EN             0u   /* Enable (1) or Disable (0) argument checking                  */
 #define OS_CPU_HOOKS_EN           1u   /* uC/OS-II hooks are found in the processor port files         */
 
@@ -62,7 +62,7 @@
                                        /* --------------------- TASK MANAGEMENT ---------------------- */
 #define OS_TASK_CHANGE_PRIO_EN    1u   /*     Include code for OSTaskChangePrio()                      */
 #define OS_TASK_CREATE_EN         1u   /*     Include code for OSTaskCreate()                          */
-#define OS_TASK_CREATE_EXT_EN     1u   /*     Include code for OSTaskCreateExt()                       */
+#define OS_TASK_CREATE_EXT_EN     0u   /*     Include code for OSTaskCreateExt()                       */
 #define OS_TASK_DEL_EN            1u   /*     Include code for OSTaskDel()                             */
 #define OS_TASK_NAME_EN           1u   /*     Enable task names                                        */
 #define OS_TASK_PROFILE_EN        1u   /*     Include variables in OS_TCB for profiling                */
@@ -88,10 +88,10 @@
 #define OS_MBOX_EN                1u   /* Enable (1) or Disable (0) code generation for MAILBOXES      */
 #define OS_MBOX_ACCEPT_EN         1u   /*     Include code for OSMboxAccept()                          */
 #define OS_MBOX_DEL_EN            1u   /*     Include code for OSMboxDel()                             */
-#define OS_MBOX_PEND_ABORT_EN     1u   /*     Include code for OSMboxPendAbort()                       */
+#define OS_MBOX_PEND_ABORT_EN     0u   /*     Include code for OSMboxPendAbort()                       */
 #define OS_MBOX_POST_EN           1u   /*     Include code for OSMboxPost()                            */
-#define OS_MBOX_POST_OPT_EN       1u   /*     Include code for OSMboxPostOpt()                         */
-#define OS_MBOX_QUERY_EN          1u   /*     Include code for OSMboxQuery()                           */
+#define OS_MBOX_POST_OPT_EN       0u   /*     Include code for OSMboxPostOpt()                         */
+#define OS_MBOX_QUERY_EN          0u   /*     Include code for OSMboxQuery()                           */
 
 
                                        /* --------------------- MEMORY MANAGEMENT -------------------- */
@@ -104,7 +104,7 @@
 #define OS_MUTEX_EN               1u   /* Enable (1) or Disable (0) code generation for MUTEX          */
 #define OS_MUTEX_ACCEPT_EN        1u   /*     Include code for OSMutexAccept()                         */
 #define OS_MUTEX_DEL_EN           1u   /*     Include code for OSMutexDel()                            */
-#define OS_MUTEX_QUERY_EN         1u   /*     Include code for OSMutexQuery()                          */
+#define OS_MUTEX_QUERY_EN         0u   /*     Include code for OSMutexQuery()                          */
 
 
                                        /* ---------------------- MESSAGE QUEUES ---------------------- */
@@ -112,27 +112,27 @@
 #define OS_Q_ACCEPT_EN            1u   /*     Include code for OSQAccept()                             */
 #define OS_Q_DEL_EN               1u   /*     Include code for OSQDel()                                */
 #define OS_Q_FLUSH_EN             1u   /*     Include code for OSQFlush()                              */
-#define OS_Q_PEND_ABORT_EN        1u   /*     Include code for OSQPendAbort()                          */
+#define OS_Q_PEND_ABORT_EN        0u   /*     Include code for OSQPendAbort()                          */
 #define OS_Q_POST_EN              1u   /*     Include code for OSQPost()                               */
-#define OS_Q_POST_FRONT_EN        1u   /*     Include code for OSQPostFront()                          */
-#define OS_Q_POST_OPT_EN          1u   /*     Include code for OSQPostOpt()                            */
-#define OS_Q_QUERY_EN             1u   /*     Include code for OSQQuery()                              */
+#define OS_Q_POST_FRONT_EN        0u   /*     Include code for OSQPostFront()                          */
+#define OS_Q_POST_OPT_EN          0u   /*     Include code for OSQPostOpt()                            */
+#define OS_Q_QUERY_EN             0u   /*     Include code for OSQQuery()                              */
 
 
                                        /* ------------------------ SEMAPHORES ------------------------ */
 #define OS_SEM_EN                 1u   /* Enable (1) or Disable (0) code generation for SEMAPHORES     */
 #define OS_SEM_ACCEPT_EN          1u   /*    Include code for OSSemAccept()                            */
 #define OS_SEM_DEL_EN             1u   /*    Include code for OSSemDel()                               */
-#define OS_SEM_PEND_ABORT_EN      1u   /*    Include code for OSSemPendAbort()                         */
-#define OS_SEM_QUERY_EN           1u   /*    Include code for OSSemQuery()                             */
+#define OS_SEM_PEND_ABORT_EN      0u   /*    Include code for OSSemPendAbort()                         */
+#define OS_SEM_QUERY_EN           0u   /*    Include code for OSSemQuery()                             */
 #define OS_SEM_SET_EN             1u   /*    Include code for OSSemSet()                               */
 
 
                                        /* --------------------- TIME MANAGEMENT ---------------------- */
-#define OS_TIME_DLY_HMSM_EN       1u   /*     Include code for OSTimeDlyHMSM()                         */
-#define OS_TIME_DLY_RESUME_EN     1u   /*     Include code for OSTimeDlyResume()                       */
+#define OS_TIME_DLY_HMSM_EN       0u   /*     Include code for OSTimeDlyHMSM()                         */
+#define OS_TIME_DLY_RESUME_EN     0u   /*     Include code for OSTimeDlyResume()                       */
 #define OS_TIME_GET_SET_EN        1u   /*     Include code for OSTimeGet() and OSTimeSet()             */
-#define OS_TIME_TICK_HOOK_EN      1u   /*     Include code for OSTimeTickHook()                        */
+#define OS_TIME_TICK_HOOK_EN      0u   /*     Include code for OSTimeTickHook()                        */
 
 
                                        /* --------------------- TIMER MANAGEMENT --------------------- */

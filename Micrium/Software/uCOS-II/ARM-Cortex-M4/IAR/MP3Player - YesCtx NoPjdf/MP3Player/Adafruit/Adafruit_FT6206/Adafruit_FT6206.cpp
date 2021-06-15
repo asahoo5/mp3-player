@@ -112,10 +112,7 @@ void Adafruit_FT6206::readData(uint16_t *x, uint16_t *y) {
   uint8_t i2cdat[16];
   uint32_t count = 16;
   i2cdat[0] = 0;
-    // DRIVER TODO
-    // Uncomment the Read() call and migrate the following code to PjdfInternalI2C.c
-    // Read(hI2C, i2cdat, &count);
-  
+    
     OS_CPU_SR cpu_sr = 0;
     OS_ENTER_CRITICAL();
     I2C_start(I2C1, FT6206_ADDR<<1, LL_I2C_GENERATE_START_WRITE, 1);
@@ -197,10 +194,6 @@ TS_Point Adafruit_FT6206::getPoint(void) {
 
 uint8_t Adafruit_FT6206::readRegister8(uint8_t reg) {
     uint32_t count = 1;
-    
-    // DRIVER TODO
-    // Uncomment the Read() call and migrate the following code to PjdfInternalI2C.c
-    // Read(hI2C, &reg, &count);
 
     OS_CPU_SR cpu_sr = 0;
     OS_ENTER_CRITICAL();
@@ -225,10 +218,7 @@ void Adafruit_FT6206::writeRegister8(uint8_t reg, uint8_t val) {
     buf[1] = val;
     uint32_t count = 1;
 
-    // DRIVER TODO
-    // Uncomment the Write() call and migrate the following code to PjdfInternalI2C.c
-    // Write(hI2C, buf, &count);
-    
+       
     OS_CPU_SR cpu_sr = 0;
     OS_ENTER_CRITICAL();
     

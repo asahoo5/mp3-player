@@ -20,7 +20,7 @@ static char *DeviceDriverIDs [] =
 #define MAXDEVICES (sizeof(DeviceDriverIDs)/sizeof(char*))
 
 
-// DRIVER TODO: add the reference to your driver's pName and Init() function here:
+// add the reference to your driver's pName and Init() function here:
 // IMPORTANT: maintain the same order as in PJDF_DEVICE_IDS
 static DriverInternal driversInternal[MAXDEVICES] = 
 {

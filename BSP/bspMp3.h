@@ -33,8 +33,11 @@
 
 #define MP3_SPI_DEVICE_ID  PJDF_DEVICE_ID_SPI1
 
-#define MP3_SPI_DATARATE LL_SPI_BAUDRATEPRESCALER_DIV8  // Tune to find optimal value MP3 decoder will work with. Works with 16MHz HCLK
-//#define MP3_SPI_DATARATE LL_SPI_BAUDRATEPRESCALER_DIV32  // Tune to find optimal value MP3 decoder will work with. Works with 80MHz HCLK
+//#define MP3_SPI_DATARATE LL_SPI_BAUDRATEPRESCALER_DIV8  // Tune to find optimal value MP3 decoder will work with. Works with 16MHz HCLK
+#define MP3_SPI_DATARATE LL_SPI_BAUDRATEPRESCALER_DIV32  // Tune to find optimal value MP3 decoder will work with. Works with 80MHz HCLK
+
+#define MP3_VOLUME_RANGE           14
+#define DATA_FRAME                 4
 
 // some command strings to send to the VS1053 MP3 decoder:
 extern const INT8U BspMp3SineWave[];
@@ -43,8 +46,9 @@ extern const INT8U BspMp3TestMode[];
 extern const INT8U BspMp3PlayMode[];
 extern const INT8U BspMp3SoftReset[];
 extern const INT8U BspMp3SetClockF[];
-extern const INT8U BspMp3SetVol1010[];
-extern const INT8U BspMp3SetVol6060[];
+//extern const INT8U BspMp3SetVol1010[];
+//extern const INT8U BspMp3SetVol6060[];
+extern const INT8U BspMp3SetVolRange[MP3_VOLUME_RANGE][DATA_FRAME];
 extern const INT8U BspMp3ReadVol[];
 
 // Lengths of the above commands
@@ -54,8 +58,9 @@ extern const INT8U BspMp3TestModeLen;
 extern const INT8U BspMp3PlayModeLen;
 extern const INT8U BspMp3SoftResetLen;
 extern const INT8U BspMp3SetClockFLen;
-extern const INT8U BspMp3SetVol1010Len;
-extern const INT8U BspMp3SetVol6060Len;
+//extern const INT8U BspMp3SetVol1010Len;
+//extern const INT8U BspMp3SetVol6060Len;
+extern const INT8U BspMp3SetVolLen;
 extern const INT8U BspMp3ReadVolLen;
 
 
